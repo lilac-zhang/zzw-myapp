@@ -1,0 +1,25 @@
+name: Deploy to EC2 via ALB
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build & Push Image
+        run: |
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/myapp .
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/myapp
