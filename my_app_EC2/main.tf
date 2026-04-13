@@ -62,7 +62,9 @@ resource "aws_instance" "web" {
               yum install -y docker
               systemctl enable docker
               systemctl start docker
-              usermod -aG docker ec2-user
+              sleep 10
+              docker pull lilaczhang/my_app
+              docker run -d -p 5000:5000 --name myapp lilaczhang/my_app
               EOF
 
   tags = {
