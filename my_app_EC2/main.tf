@@ -58,16 +58,28 @@ resource "aws_instance" "web" {
 
   user_data = <<-EOF
               #!/bin/bash
+
               yum update -y
-              yum install -y docker
+              yum install -y docker cronie
+
               systemctl enable docker
               systemctl start docker
+
+              systemctl enable crond
+              systemctl start crond
+             
+
               usermod -aG docker ec2-user
               sleep 10
-              docker pull lilaczhang/my_app
-              docker stop myapp || true
-              docker rm myapp || true
-              docker run -d -p 5000:5000 --name myapp lilaczhang/my_app
+
+              
+              IMAGE="lilaczhang/my_app:latest"
+              CONTAINER="myapp"
+              
+              docker pull $IMAGE
+              docker stop $CONTAINER || true
+              docker rm $CONTAINER || true
+              docker run -d -p 5000:5000 --name $CONTAINER $IMAGE
 
               cat << 'EOT' > /home/ec2-user/update.sh
               #!/bin/bash
@@ -75,15 +87,23 @@ resource "aws_instance" "web" {
               IMAGE="lilaczhang/my_app:latest"
               CONTAINER="myapp"
 
+              echo "Checking for updates..."
+
               docker pull $IMAGE
 
-              CURRENT=$(docker inspect --format='{{index .RepoDigests 0}}' $CONTAINER 2>/dev/null || echo "")
-              LATEST=$(docker inspect --format='{{index .RepoDigests 0}}' $IMAGE)
+              CURRENT=$(docker inspect --format='{{.Image}}' $CONTAINER 2>/dev/null || echo "")
+              LATEST=$(docker inspect --format='{{.Id}}' $IMAGE)
+              
+              echo "CURRENT: $CURRENT"
+              echo "LATEST:  $LATEST"
 
               if [ "$CURRENT" != "$LATEST" ]; then
                docker stop $CONTAINER || true
                docker rm $CONTAINER || true
                docker run -d -p 5000:5000 --name $CONTAINER $IMAGE
+
+              else
+               echo "No update"
               fi
               EOT
              
