@@ -65,6 +65,8 @@ resource "aws_instance" "web" {
               usermod -aG docker ec2-user
               sleep 10
               docker pull lilaczhang/my_app
+              docker stop myapp || true
+              docker rm myapp || true
               docker run -d -p 5000:5000 --name myapp lilaczhang/my_app
 
               cat << 'EOT' > /home/ec2-user/update.sh
