@@ -66,6 +66,30 @@ resource "aws_instance" "web" {
               sleep 10
               docker pull lilaczhang/my_app
               docker run -d -p 5000:5000 --name myapp lilaczhang/my_app
+
+              cat << 'EOT' > /home/ec2-user/update.sh
+              #!/bin/bash
+
+              IMAGE="lilaczhang/my_app:latest"
+              CONTAINER="myapp"
+
+              docker pull $IMAGE
+
+              CURRENT=$(docker inspect --format='{{index .RepoDigests 0}}' $CONTAINER 2>/dev/null || echo "")
+              LATEST=$(docker inspect --format='{{index .RepoDigests 0}}' $IMAGE)
+
+              if [ "$CURRENT" != "$LATEST" ]; then
+               docker stop $CONTAINER || true
+               docker rm $CONTAINER || true
+               docker run -d -p 5000:5000 --name $CONTAINER $IMAGE
+              fi
+              EOT
+             
+              chmod +x /home/ec2-user/update.sh
+              chown ec2-user:ec2-user /home/ec2-user/update.sh
+
+              echo "* * * * * /home/ec2-user/update.sh >> /home/ec2-user/update.log 2>&1" | crontab -u ec2-user -
+
               EOF
 
   tags = {
