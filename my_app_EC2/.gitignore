@@ -9,3 +9,8 @@ crash.log
 
 # macOS
 .DS_Store
+
+#evn
+.env
+
+terraform.tfvars

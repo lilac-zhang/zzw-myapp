@@ -79,8 +79,12 @@ resource "aws_instance" "web" {
               docker pull $IMAGE
               docker stop $CONTAINER || true
               docker rm $CONTAINER || true
-              docker run -d -p 5000:5000 --name $CONTAINER $IMAGE
-
+              docker run -d -p 5000:5000 \
+               -e DB_HOST=${aws_db_instance.postgres.address} \
+               -e DB_NAME=todo_db \
+               -e DB_USER=postgres \
+               -e DB_PASSWORD=${var.db_password} \
+               --name $CONTAINER $IMAGE
               cat << 'EOT' > /home/ec2-user/update.sh
               #!/bin/bash
 
@@ -100,8 +104,12 @@ resource "aws_instance" "web" {
               if [ "$CURRENT" != "$LATEST" ]; then
                docker stop $CONTAINER || true
                docker rm $CONTAINER || true
-               docker run -d -p 5000:5000 --name $CONTAINER $IMAGE
-
+               docker run -d -p 5000:5000 \
+                 -e DB_HOST=${aws_db_instance.postgres.address} \
+                 -e DB_NAME=todo_db \
+                 -e DB_USER=postgres \
+                 -e DB_PASSWORD=${var.db_password} \
+                 --name $CONTAINER $IMAGE
               else
                echo "No update"
               fi
