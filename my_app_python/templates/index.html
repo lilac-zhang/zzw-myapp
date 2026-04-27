@@ -20,6 +20,8 @@
             <div>
                 {% if t[2] %}
                     <span class="text-decoration-line-through text-muted">{{ t[1] }}</span>
+                {% if t[3] %}
+                    <img src="{{ t[3] }}" width="100">
                 {% else %}
                     {{ t[1] }}
                 {% endif %}
