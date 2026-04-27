@@ -24,7 +24,8 @@ def init_db():
     CREATE TABLE IF NOT EXISTS todos (
         id SERIAL PRIMARY KEY,
         title TEXT,
-        done BOOLEAN
+        done BOOLEAN,
+        image_url TEXT
     )
     """)
     conn.commit()
