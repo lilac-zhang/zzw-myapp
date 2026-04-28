@@ -57,20 +57,20 @@ def add():
 
         image_url = None
 
-    if file:
-        filename = str(uuid.uuid4()) + "_" + file.filename
-        s3.upload_fileobj(file, BUCKET, filename)
-        image_url = f"https://{BUCKET}.s3.amazonaws.com/{filename}"
+        if file:
+            filename = str(uuid.uuid4()) + "_" + file.filename
+            s3.upload_fileobj(file, BUCKET, filename)
+            image_url = f"https://{BUCKET}.s3.amazonaws.com/{filename}"
 
-    cur = conn.cursor()
-    cur.execute(
-         "INSERT INTO todos (title, done, image_url) VALUES (%s, false, %s)",
-         (title, image_url)
-    )
-    conn.commit()
-    cur.close()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO todos (title, done, image_url) VALUES (%s, false, %s)",
+            (title, image_url)
+        )
+        conn.commit()
+        cur.close()
 
-    return redirect("/")
+        return redirect("/")
 
     return render_template("add.html")
 
