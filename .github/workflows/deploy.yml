@@ -19,7 +19,21 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      #  build + latest tag
       - name: Build & Push Image
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/my_app ./my_app_python
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/my_app
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/my_app:latest ./my_app_python
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/my_app:latest
+
+      #  update EC2
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/my_app:latest
+            docker stop myapp || true
+            docker rm myapp || true
+            docker run -d -p 80:5000 --name myapp ${{ secrets.DOCKERHUB_USERNAME }}/my_app:latest
