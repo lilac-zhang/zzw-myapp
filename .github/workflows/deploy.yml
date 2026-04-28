@@ -1,4 +1,4 @@
-name: Deploy to EC2 via ALB
+name: Build and Push Docker Image
 
 on:
   push:
@@ -6,34 +6,24 @@ on:
       - main
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. pull
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Login DockerHub
+      # 2. DockerHub
+      - name: Login to DockerHub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      #  build + latest tag
-      - name: Build & Push Image
+      # 3. Build + Push
+      - name: Build and Push Image
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/my_app:latest ./my_app_python
+          docker build --no-cache -t ${{ secrets.DOCKERHUB_USERNAME }}/my_app:latest ./my_app_python
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/my_app:latest
-
-      #  update EC2
-      - name: Deploy to EC2
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/my_app:latest
-            docker stop myapp || true
-            docker rm myapp || true
-            docker run -d -p 80:5000 --name myapp ${{ secrets.DOCKERHUB_USERNAME }}/my_app:latest
+        
