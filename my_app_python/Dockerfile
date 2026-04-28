@@ -11,3 +11,4 @@ EXPOSE 5000
 
 CMD ["python", "app.py"]
 RUN pip install boto3
+RUN echo "version 999"
