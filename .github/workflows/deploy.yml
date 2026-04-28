@@ -25,5 +25,6 @@ jobs:
       - name: Build and Push Image
         run: |
           docker build --no-cache -t ${{ secrets.DOCKERHUB_USERNAME }}/my_app:latest ./my_app_python
+          docker images
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/my_app:latest
         

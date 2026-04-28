@@ -11,7 +11,7 @@ load_dotenv()
 
 from flask import Flask, request, redirect, render_template
 import psycopg2
-
+print("VERSION CHECK 123456")
 app = Flask(__name__)
 
 # DB（local docker）
