@@ -70,12 +70,15 @@ resource "aws_instance" "web" {
              
 
               usermod -aG docker ec2-user
-              sleep 10
+              until docker info > /dev/null 2>&1; do
+                sleep 1
+              done
 
               
               IMAGE="lilaczhang/my_app:latest"
               CONTAINER="myapp"
               
+              echo "Initial pull..."
               docker pull $IMAGE
               docker stop $CONTAINER || true
               docker rm $CONTAINER || true
@@ -93,7 +96,7 @@ resource "aws_instance" "web" {
 
               echo "Checking for updates..."
 
-              docker pull $IMAGE
+              docker pull --disable-content-trust=false $IMAGE
 
               CURRENT=$(docker inspect --format='{{.Image}}' $CONTAINER 2>/dev/null || echo "")
               LATEST=$(docker inspect --format='{{.Id}}' $IMAGE)
