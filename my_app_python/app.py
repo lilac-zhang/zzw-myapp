@@ -51,20 +51,28 @@ def index():
 # add
 @app.route("/add", methods=["GET", "POST"])
 def add():
-    title = request.form["title"]
-    file = request.files.get("image")
+    if request.method == "POST":
+        title = request.form["title"]
+        file = request.files.get("image")
 
-    image_url = None
+        image_url = None
 
     if file:
         filename = str(uuid.uuid4()) + "_" + file.filename
         s3.upload_fileobj(file, BUCKET, filename)
         image_url = f"https://{BUCKET}.s3.amazonaws.com/{filename}"
 
+    cur = conn.cursor()
     cur.execute(
          "INSERT INTO todos (title, done, image_url) VALUES (%s, false, %s)",
          (title, image_url)
     )
+    conn.commit()
+    cur.close()
+
+    return redirect("/")
+
+    return render_template("add.html")
 
 # edit
 @app.route("/<int:id>/edit", methods=["GET", "POST"])
