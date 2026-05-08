@@ -2,6 +2,16 @@ resource "aws_s3_bucket" "images" {
   bucket = "zzw-myapp-images-123456"
 }
 
+# Ownership
+resource "aws_s3_bucket_ownership_controls" "images" {
+  bucket = aws_s3_bucket.images.id
+
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
+}
+
+# Public Access Block
 resource "aws_s3_bucket_public_access_block" "images" {
   bucket = aws_s3_bucket.images.id
 
@@ -11,6 +21,7 @@ resource "aws_s3_bucket_public_access_block" "images" {
   restrict_public_buckets = false
 }
 
+# Bucket Policy
 resource "aws_s3_bucket_policy" "public_read" {
   bucket = aws_s3_bucket.images.id
 

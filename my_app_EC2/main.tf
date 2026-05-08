@@ -40,92 +40,62 @@ resource "aws_security_group" "web_sg" {
   }
 }
 
-# EC2
-resource "aws_instance" "web" {
-  ami           = "ami-088b486f20fab3f0e" 
-  instance_type = "t3.micro"
+# ECS Cluster
+resource "aws_ecs_cluster" "main" {
+  name = "my-app-cluster"
+}
 
-  subnet_id = "subnet-0c93a6762611fc349"   
+# Task Definition
+resource "aws_ecs_task_definition" "app" {
+  family                   = "my-app"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = "256"
+  memory                   = "512"
 
-  vpc_security_group_ids = [
-    aws_security_group.web_sg.id
-  ]
+  execution_role_arn = aws_iam_role.ecs_task_execution.arn
 
-  key_name = "222"
+  container_definitions = jsonencode([
+    {
+      name      = "my-app"
+      image     = "lilaczhang/my_app:latest"
+      essential = true
 
-  associate_public_ip_address = true
+      portMappings = [
+        {
+          containerPort = 5000
+          protocol      = "tcp"
+        }
+      ]
 
+      environment = [
+        { name = "DB_HOST", value = "你的RDS地址" },
+        { name = "DB_NAME", value = "todo_db" },
+        { name = "DB_USER", value = "postgres" },
+        { name = "DB_PASSWORD", value = "xxx" },
+        { name = "BUCKET", value = "zzw-myapp-images-123456" }
+      ]
+    }
+  ])
+}
 
-  user_data = <<-EOF
-              #!/bin/bash
+# ECS Service
+resource "aws_ecs_service" "app" {
+  name            = "my-app-service"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.app.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
 
-              yum update -y
-              yum install -y docker cronie
+  network_configuration {
+    subnets         = ["你的subnet1", "你的subnet2"]
+    security_groups = [aws_security_group.ecs.id]
+    assign_public_ip = true
+  }
 
-              systemctl enable docker
-              systemctl start docker
-
-              systemctl enable crond
-              systemctl start crond
-             
-
-              usermod -aG docker ec2-user
-              until docker info > /dev/null 2>&1; do
-                sleep 1
-              done
-
-              
-              IMAGE="lilaczhang/my_app:latest"
-              CONTAINER="myapp"
-              
-              echo "Initial pull..."
-              docker pull $IMAGE
-              docker stop $CONTAINER || true
-              docker rm $CONTAINER || true
-              docker run -d -p 5000:5000 \
-               -e DB_HOST=${aws_db_instance.postgres.address} \
-               -e DB_NAME=todo_db \
-               -e DB_USER=postgres \
-               -e DB_PASSWORD=${var.db_password} \
-               --name $CONTAINER $IMAGE
-              cat << 'EOT' > /home/ec2-user/update.sh
-              #!/bin/bash
-
-              IMAGE="lilaczhang/my_app:latest"
-              CONTAINER="myapp"
-
-              echo "Checking for updates..."
-
-              docker pull --disable-content-trust=false $IMAGE
-
-              CURRENT=$(docker inspect --format='{{.Image}}' $CONTAINER 2>/dev/null || echo "")
-              LATEST=$(docker inspect --format='{{.Id}}' $IMAGE)
-              
-              echo "CURRENT: $CURRENT"
-              echo "LATEST:  $LATEST"
-
-              if [ "$CURRENT" != "$LATEST" ]; then
-               docker stop $CONTAINER || true
-               docker rm $CONTAINER || true
-               docker run -d -p 5000:5000 \
-                 -e DB_HOST=${aws_db_instance.postgres.address} \
-                 -e DB_NAME=todo_db \
-                 -e DB_USER=postgres \
-                 -e DB_PASSWORD=${var.db_password} \
-                 --name $CONTAINER $IMAGE
-              else
-               echo "No update"
-              fi
-              EOT
-             
-              chmod +x /home/ec2-user/update.sh
-              chown ec2-user:ec2-user /home/ec2-user/update.sh
-
-              echo "* * * * * /home/ec2-user/update.sh >> /home/ec2-user/update.log 2>&1" | crontab -u ec2-user -
-
-              EOF
-
-  tags = {
-    Name = "zzw-ec2"
+  load_balancer {
+    target_group_arn = aws_lb_target_group.app.arn
+    container_name   = "my-app"
+    container_port   = 5000
   }
 }

@@ -36,27 +36,21 @@ resource "aws_security_group" "alb_sg" {
 resource "aws_lb" "app" {
   name               = "zzw-alb"
   load_balancer_type = "application"
-  subnets            = ["subnet-0c93a6762611fc349", "subnet-0e744431e5f5d940b"]  
+  subnets            = ["subnet-0c93a6762611fc349", "subnet-0e744431e5f5d940b"]
   security_groups    = [aws_security_group.alb_sg.id]
 }
 
-
 resource "aws_lb_target_group" "tg" {
-  name     = "zzw-tg"
-  port     = 5000
-  protocol = "HTTP"
-  vpc_id   = "vpc-06992be4b24818bd1"
+  name        = "zzw-tg"
+  port        = 5000
+  protocol    = "HTTP"
+  vpc_id      = "vpc-06992be4b24818bd1"
+  target_type = "ip"
 
   health_check {
     path = "/"
     port = "5000"
   }
-}
-
-resource "aws_lb_target_group_attachment" "tg_attach" {
-  target_group_arn = aws_lb_target_group.tg.arn
-  target_id        = aws_instance.web.id
-  port             = 5000
 }
 
 resource "aws_lb_listener" "http" {
@@ -89,7 +83,6 @@ resource "aws_lb_listener" "https" {
   }
 }
 
-
 resource "aws_route53_record" "https" {
   zone_id = data.aws_route53_zone.main.zone_id
   name    = "hello"
@@ -101,5 +94,3 @@ resource "aws_route53_record" "https" {
     evaluate_target_health = true
   }
 }
-
-
