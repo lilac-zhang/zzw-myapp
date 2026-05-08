@@ -57,7 +57,7 @@ resource "aws_ecs_task_definition" "app" {
 
   execution_role_arn = aws_iam_role.ecs_task_execution.arn
 
-  container_definitions = jsonencode([
+   container_definitions = jsonencode([
     {
       name      = "my-app"
       image     = "lilaczhang/my_app:latest"
@@ -71,31 +71,24 @@ resource "aws_ecs_task_definition" "app" {
       ]
 
       environment = [
-        {
-          name  = "DB_HOST"
-          value = aws_db_instance.postgres.address
-        },
-        {
-          name  = "DB_NAME"
-          value = "todo_db"
-        },
-        {
-          name  = "DB_USER"
-          value = "postgres"
-        },
-        {
-          name  = "DB_PASSWORD"
-          value = "password123"
-        },
-        {
-          name  = "BUCKET"
-          value = "zzw-myapp-images-123456"
-        }
+        { name = "DB_HOST", value = aws_db_instance.postgres.address },
+        { name = "DB_NAME", value = "todo_db" },
+        { name = "DB_USER", value = "postgres" },
+        { name = "DB_PASSWORD", value = var.db_password },
+        { name = "BUCKET", value = aws_s3_bucket.images.bucket }
       ]
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = "/ecs/my-app"
+          awslogs-region        = "ap-northeast-1"
+          awslogs-stream-prefix = "ecs"
+        }
+      }
     }
   ])
 }
-
 # ECS Service
 resource "aws_ecs_service" "app" {
   name            = "my-app-service"
