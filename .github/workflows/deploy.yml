@@ -1,4 +1,4 @@
-name: Build and Push Docker Image
+name: Build Push and Deploy to ECS
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,10 +21,24 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 3. Build + Push
+      # 3. Build + Push Docker Image
       - name: Build and Push Image
         run: |
           docker build --no-cache -t ${{ secrets.DOCKERHUB_USERNAME }}/my_app:latest ./my_app_python
-          docker images
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/my_app:latest
-        
+
+      # 4. AWS
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-1
+
+      # 5. ECS pull latest
+      - name: Force new ECS deployment
+        run: |
+          aws ecs update-service \
+            --cluster my-app-cluster \
+            --service my-app-service \
+            --force-new-deployment
