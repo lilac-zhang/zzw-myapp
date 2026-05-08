@@ -36,9 +36,31 @@ jobs:
           aws-region: ap-northeast-1
 
       # 5. ECS pull latest
+      - name: Check ECS cluster exists
+        id: check-ecs
+        run: |
+          if aws ecs describe-clusters \
+            --clusters my-app-cluster \
+            --region ap-northeast-1 \
+            --query "clusters[0].status" \
+            --output text | grep -q ACTIVE; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      # 6. if have ECS
       - name: Force new ECS deployment
+        if: steps.check-ecs.outputs.exists == 'true'
         run: |
           aws ecs update-service \
             --cluster my-app-cluster \
             --service my-app-service \
-            --force-new-deployment
+            --force-new-deployment \
+            --region ap-northeast-1
+
+      # 7. if donot have ECS
+      - name: Skip ECS deployment
+        if: steps.check-ecs.outputs.exists == 'false'
+        run: |
+          echo "ECS cluster does not exist. Skip deployment."
