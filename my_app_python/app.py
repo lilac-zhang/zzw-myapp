@@ -1,52 +1,60 @@
 import boto3
 import uuid
-
-s3 = boto3.client("s3")
-BUCKET = "zzw-myapp-images-123456"
-
 import os
-from dotenv import load_dotenv
-
-load_dotenv()
-
-from flask import Flask, request, redirect, render_template
 import psycopg2
-print("VERSION CHECK 123456")
+from flask import Flask, request, redirect, render_template
+
+print("VERSION CHECK ECS")
+
 app = Flask(__name__)
 
-# DB（local docker）
-print("DB_HOST =", os.getenv("DB_HOST"))
-conn = psycopg2.connect(
-    host=os.getenv("DB_HOST"),
-    database=os.getenv("DB_NAME"),
-    user=os.getenv("DB_USER"),
-    password=os.getenv("DB_PASSWORD")
-)
+# S3
+s3 = boto3.client("s3", region_name="ap-northeast-1")
+BUCKET = os.getenv("BUCKET")
 
-# frist date
-def init_db():
-    cur = conn.cursor()
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS todos (
-        id SERIAL PRIMARY KEY,
-        title TEXT,
-        done BOOLEAN,
-        image_url TEXT
+# DB
+def get_conn():
+    return psycopg2.connect(
+        host=os.getenv("DB_HOST"),
+        database=os.getenv("DB_NAME"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD")
     )
-    """)
-    conn.commit()
-    cur.close()
+
+
+# initialization DB
+def init_db():
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS todos (
+            id SERIAL PRIMARY KEY,
+            title TEXT,
+            done BOOLEAN,
+            image_url TEXT
+        )
+        """)
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print("DB init failed:", e)
 
 init_db()
 
-#  todo
+
+# front page
 @app.route("/")
 def index():
+    conn = get_conn()
     cur = conn.cursor()
     cur.execute("SELECT id, title, done, image_url FROM todos")
     todos = cur.fetchall()
     cur.close()
+    conn.close()
     return render_template("index.html", todos=todos)
+
 
 # add
 @app.route("/add", methods=["GET", "POST"])
@@ -62,6 +70,7 @@ def add():
             s3.upload_fileobj(file, BUCKET, filename)
             image_url = f"https://{BUCKET}.s3.amazonaws.com/{filename}"
 
+        conn = get_conn()
         cur = conn.cursor()
         cur.execute(
             "INSERT INTO todos (title, done, image_url) VALUES (%s, false, %s)",
@@ -69,6 +78,7 @@ def add():
         )
         conn.commit()
         cur.close()
+        conn.close()
 
         return redirect("/")
 
@@ -77,6 +87,7 @@ def add():
 # edit
 @app.route("/<int:id>/edit", methods=["GET", "POST"])
 def edit(id):
+    conn = get_conn()
     cur = conn.cursor()
 
     if request.method == "POST":
@@ -84,32 +95,39 @@ def edit(id):
         cur.execute("UPDATE todos SET title=%s WHERE id=%s", (title, id))
         conn.commit()
         cur.close()
+        conn.close()
         return redirect("/")
 
     cur.execute("SELECT title FROM todos WHERE id=%s", (id,))
     todo = cur.fetchone()
     cur.close()
+    conn.close()
 
     return render_template("edit.html", todo=todo)
+
 
 # delete
 @app.route("/<int:id>/delete")
 def delete(id):
+    conn = get_conn()
     cur = conn.cursor()
     cur.execute("DELETE FROM todos WHERE id=%s", (id,))
     conn.commit()
     cur.close()
+    conn.close()
     return redirect("/")
 
-# mark active
+# toogle
 @app.route("/<int:id>/toggle")
 def toggle(id):
+    conn = get_conn()
     cur = conn.cursor()
     cur.execute("UPDATE todos SET done = NOT done WHERE id=%s", (id,))
     conn.commit()
     cur.close()
+    conn.close()
     return redirect("/")
 
+# main
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
-

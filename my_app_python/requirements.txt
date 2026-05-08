@@ -1,5 +1,5 @@
-certifi==2026.2.25
-flask
+Flask
 requests
 psycopg2-binary
 python-dotenv
+boto3
