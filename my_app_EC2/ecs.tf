@@ -56,11 +56,12 @@ resource "aws_ecs_task_definition" "app" {
   memory = "512"
 
   execution_role_arn = aws_iam_role.ecs_task_execution.arn
+  task_role_arn      = aws_iam_role.ecs_task_role.arn
 
-   container_definitions = jsonencode([
+  container_definitions = jsonencode([
     {
       name      = "my-app"
-      image     = "lilaczhang/my_app:latest"
+      image = "${aws_ecr_repository.my_app.repository_url}:latest"
       essential = true
 
       portMappings = [
@@ -116,4 +117,38 @@ resource "aws_ecs_service" "app" {
   depends_on = [
     aws_lb_listener.https
   ]
+}
+
+# ECS role
+resource "aws_iam_role" "ecs_task_role" {
+  name = "ecsTaskRole"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = "ecs-tasks.amazonaws.com"
+      }
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "ecs_s3_upload" {
+  name = "ecs-s3-upload-policy"
+  role = aws_iam_role.ecs_task_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject"
+        ]
+        Resource = "${aws_s3_bucket.images.arn}/*"
+      }
+    ]
+  })
 }

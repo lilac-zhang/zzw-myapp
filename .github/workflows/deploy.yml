@@ -10,24 +10,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. pull
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2. DockerHub
-      - name: Login to DockerHub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      # 3. Build + Push Docker Image
-      - name: Build and Push Image
-        run: |
-          docker build --no-cache -t ${{ secrets.DOCKERHUB_USERNAME }}/my_app:latest ./my_app_python
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/my_app:latest
-
-      # 4. AWS
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -35,7 +20,15 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-northeast-1
 
-      # 5. ECS pull latest
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and Push Image to ECR
+        run: |
+          IMAGE_URI=558931385457.dkr.ecr.ap-northeast-1.amazonaws.com/my_app:latest
+          docker build --no-cache -t $IMAGE_URI ./my_app_python
+          docker push $IMAGE_URI
+
       - name: Check ECS cluster exists
         id: check-ecs
         run: |
@@ -49,7 +42,6 @@ jobs:
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
-      # 6. if have ECS
       - name: Force new ECS deployment
         if: steps.check-ecs.outputs.exists == 'true'
         run: |
@@ -59,7 +51,6 @@ jobs:
             --force-new-deployment \
             --region ap-northeast-1
 
-      # 7. if donot have ECS
       - name: Skip ECS deployment
         if: steps.check-ecs.outputs.exists == 'false'
         run: |

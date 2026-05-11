@@ -1,5 +1,5 @@
 variable "my_ip" {
-  default = "113.148.112.187/32"  
+  default = "113.148.112.187/32"
 }
 
 
@@ -8,7 +8,7 @@ resource "aws_security_group" "rds_sg" {
   name   = "rds-sg"
   vpc_id = "vpc-06992be4b24818bd1"
 
-  
+
   ingress {
     description = "My laptop"
     from_port   = 5432
@@ -17,7 +17,7 @@ resource "aws_security_group" "rds_sg" {
     cidr_blocks = [var.my_ip]
   }
 
-  
+
   ingress {
     description     = "From ECS"
     from_port       = 5432
@@ -59,7 +59,7 @@ resource "aws_db_instance" "postgres" {
   username = "postgres"
   password = var.db_password
 
-  publicly_accessible = true   
+  publicly_accessible = true
 
   skip_final_snapshot = true
 
